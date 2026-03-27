@@ -1,20 +1,17 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const { GoogleGenAI } = require('@google/genai');
+import express from 'express';
+import cors from 'cors';
+import { GoogleGenAI } from '@google/genai';
+import * as dotenv from 'dotenv';
 
-// Initialize context
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Initialize Google Gen AI
-// Requires GEMINI_API_KEY inside server/.env to operate
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "temp_key_must_replace"
 });
@@ -64,7 +61,9 @@ Use markdown formatting heavily so the frontend can render it beautifully.
 
 Stay concise, mentor-like, practical, clear, and confident. Avoid rambling. Limit your response to the essential technical answers to fit within a sleek chat UI interface.`;
 
-app.post('/api/ask', async (req, res) => {
+// In Vercel serverless, the route matches the filename `api/ask.ts` exactly.
+// To be safe against routing behaviors, we map both direct (/ask) and full (/api/ask).
+app.post(['/api/ask', '/ask'], async (req, res) => {
   try {
     const { message, history } = req.body;
 
@@ -77,7 +76,6 @@ app.post('/api/ask', async (req, res) => {
     }
 
     // Format history for the new Gen AI SDK
-    // The history needs to distinguish between 'user' and 'model'
     const formattedHistory = (history || []).map((msg: any) => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.parts[0].text }]
@@ -103,6 +101,13 @@ app.post('/api/ask', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`OrbitX Backend running on http://localhost:${PORT}`);
-});
+// Local dev fallback (auto-ignored on Vercel deployment)
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`[Local Dev] API server running on http://localhost:${PORT}`);
+  });
+}
+
+// Crucial: Vercel implicitly expects the Express instance to be directly exported!
+export default app;
