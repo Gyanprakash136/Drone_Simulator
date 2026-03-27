@@ -83,7 +83,7 @@ app.post(['/api/ask', '/ask'], async (req, res) => {
 
     // Generate content using the new SDK
     const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview', // Fixed alias to match active API endpoint
+        model: 'gemini-1.5-pro', // Using official production alias
         contents: [
             ...formattedHistory,
             { role: 'user', parts: [{ text: message }] }
