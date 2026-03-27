@@ -81,6 +81,12 @@ app.post(['/api/ask', '/ask'], async (req, res) => {
       parts: [{ text: msg.parts[0].text }]
     }));
 
+    // CRITICAL: Google GenAI API strictly rejects history arrays that begin with a 'model' role.
+    // It must begin with a 'user' role. We must strip the initial "OrbitX System Online" greeting.
+    if (formattedHistory.length > 0 && formattedHistory[0].role === 'model') {
+      formattedHistory.shift();
+    }
+
     // Generate content using the new SDK
     const response = await ai.models.generateContent({
         model: 'gemini-1.5-pro', // Using official production alias
@@ -97,7 +103,8 @@ app.post(['/api/ask', '/ask'], async (req, res) => {
     res.json({ answer: response.text });
   } catch (error: any) {
     console.error("AI API Error:", error);
-    res.status(500).json({ error: "Failed to generate response.", details: error.message });
+    // Return explicit error message to frontend so the UI shows exactly what crashed
+    res.status(500).json({ error: error.message || "Failed to generate response." });
   }
 });
 
