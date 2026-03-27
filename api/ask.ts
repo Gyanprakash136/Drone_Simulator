@@ -89,7 +89,7 @@ app.post(['/api/ask', '/ask'], async (req, res) => {
 
     // Generate content using the new SDK
     const response = await ai.models.generateContent({
-        model: 'gemini-1.5-pro', // Using official production alias
+        model: 'gemini-1.5-flash', // Fallback to universally supported Flash model tier
         contents: [
             ...formattedHistory,
             { role: 'user', parts: [{ text: message }] }
