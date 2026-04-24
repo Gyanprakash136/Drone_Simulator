@@ -8,13 +8,13 @@ import { useDronePhysics } from './useDronePhysics';
 import { useFollowCam } from './useFollowCam';
 
 function InteractiveScene({ isStabilized, isRtlActive, setIsRtlActive, setHUDData, buildings }) {
-  const { droneRef, velocity, controls, windVector, flightState, rtlPhase } = useDronePhysics(isStabilized, isRtlActive, setIsRtlActive, buildings);
+  const { droneRef, velocity, controls, windVector, flightState, rtlPhase, gestureConnected, gestureLabel } = useDronePhysics(isStabilized, isRtlActive, setIsRtlActive, buildings);
   useFollowCam(droneRef);
 
   // Expose refs up to HUD safely
   React.useEffect(() => {
-    setHUDData({ droneRef, controls, velocity, windVector, flightState, rtlPhase });
-  }, [droneRef, controls, velocity, windVector, flightState, rtlPhase, setHUDData]);
+    setHUDData({ droneRef, controls, velocity, windVector, flightState, rtlPhase, gestureConnected, gestureLabel });
+  }, [droneRef, controls, velocity, windVector, flightState, rtlPhase, gestureConnected, gestureLabel, setHUDData]);
 
   return (
     <>
@@ -182,6 +182,8 @@ export function SimulatorScene() {
           setIsStabilized={setIsStabilized}
           isRtlActive={isRtlActive}
           setIsRtlActive={setIsRtlActive}
+          gestureConnected={hudRefs.gestureConnected}
+          gestureLabel={hudRefs.gestureLabel}
         />
       )}
     </div>

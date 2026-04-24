@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
-export function HUD({ droneRef, controls, velocity, windVector, flightState, rtlPhase, isStabilized, setIsStabilized, isRtlActive, setIsRtlActive }) {
+export function HUD({ droneRef, controls, velocity, windVector, flightState, rtlPhase, isStabilized, setIsStabilized, isRtlActive, setIsRtlActive, gestureConnected, gestureLabel }) {
   const [telemetry, setTelemetry] = useState({ 
     alt: 0, thr: 0, pitch: 0, roll: 0, vel: 0, 
     windX: 0, windZ: 0, state: 'GROUNDED', phase: 'IDLE',
@@ -90,9 +90,36 @@ export function HUD({ droneRef, controls, velocity, windVector, flightState, rtl
 
         </div>
 
-        {/* Buttons */}
-        <div style={{ display: 'flex', gap: '10px', pointerEvents: 'auto' }}>
-          <button onClick={() => setIsStabilized(!isStabilized)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: isStabilized ? '#00ffcc' : 'rgba(255, 255, 255, 0.1)', color: isStabilized ? '#020108' : '#fff', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>
+        {/* Buttons + Gesture Badge */}
+        <div style={{ display: 'flex', gap: '10px', pointerEvents: 'auto', alignItems: 'center' }}>
+
+          {/* ── GESTURE MODE BADGE (only when simulation script is running) ── */}
+          {gestureConnected && (
+            <div style={{
+              padding: '10px 16px', borderRadius: '8px',
+              background: 'rgba(0, 255, 136, 0.12)',
+              border: '1px solid #00ff88',
+              color: '#00ff88', fontFamily: 'monospace',
+              fontWeight: 'bold', fontSize: '0.85rem',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', gap: '2px',
+              animation: 'pulse 2s infinite'
+            }}>
+              <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>✋</span>
+              <span>GESTURE ACTIVE</span>
+              {gestureLabel && (
+                <span style={{ color: '#aaffcc', fontSize: '0.75rem', marginTop: '2px' }}>
+                  {gestureLabel}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Always-visible controls */}
+          <button
+            onClick={() => setIsStabilized(!isStabilized)}
+            style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: isStabilized ? '#00ffcc' : 'rgba(255, 255, 255, 0.1)', color: isStabilized ? '#020108' : '#fff', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}
+          >
             {isStabilized ? 'STABILIZATION ON' : 'STABILIZATION OFF'}
           </button>
           
@@ -110,11 +137,22 @@ export function HUD({ droneRef, controls, velocity, windVector, flightState, rtl
       {/* Control Instructions */}
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '50px' }}>
         <div style={{ alignSelf: 'center', background: 'rgba(2, 1, 8, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '15px 30px', borderRadius: '12px', color: '#8d95a0', fontFamily: 'sans-serif', textAlign: 'center' }}>
-          <strong style={{color:'#fff'}}>W / S</strong> : Throttle Up / Down &nbsp;&nbsp;|&nbsp;&nbsp;
-          <strong style={{color:'#fff'}}>UP / DOWN</strong> : Pitch Forward / Back <br/>
-          <strong style={{color:'#fff'}}>A / D</strong> : Roll Left / Right &nbsp;&nbsp;|&nbsp;&nbsp;
-          <strong style={{color:'#fff'}}>Q / E</strong> : Spin / Yaw Left / Right
-          <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#ffcc00' }}>[ Any Key Press Automatically Overrides RTL Mode ]</div>
+          {gestureConnected ? (
+            <>
+              <strong style={{color:'#00ff88'}}>✋ GESTURE MODE</strong> — Tilt hand to control pitch/roll<br/>
+              <strong style={{color:'#00ff88'}}>FIST</strong> : Cut Throttle &nbsp;&nbsp;|&nbsp;&nbsp;
+              <strong style={{color:'#00ff88'}}>HAND OPEN</strong> : Hover at 0.5m
+              <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#ffcc00' }}>[ Keyboard disabled while gesture script is active ]</div>
+            </>
+          ) : (
+            <>
+              <strong style={{color:'#fff'}}>W / S</strong> : Throttle Up / Down &nbsp;&nbsp;|&nbsp;&nbsp;
+              <strong style={{color:'#fff'}}>UP / DOWN</strong> : Pitch Forward / Back <br/>
+              <strong style={{color:'#fff'}}>A / D</strong> : Roll Left / Right &nbsp;&nbsp;|&nbsp;&nbsp;
+              <strong style={{color:'#fff'}}>Q / E</strong> : Spin / Yaw Left / Right
+              <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#ffcc00' }}>[ Any Key Press Automatically Overrides RTL Mode ]</div>
+            </>
+          )}
         </div>
 
         {/* Circular Navigation Radar Map */}

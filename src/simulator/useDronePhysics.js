@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useKeyboard } from './useKeyboard';
+import { useGestureSocket } from './useGestureSocket';
 import * as THREE from 'three';
 
 const MAX_THROTTLE = 20;
@@ -11,6 +12,11 @@ const GRAVITY = -9.81;
 export function useDronePhysics(isStabilized, isRtlActive, setIsRtlActive, buildings) {
   const droneRef = useRef();
   const keys = useKeyboard();
+
+  // ── Gesture socket (simulation mode) ──────────────────────────────
+  // When gesture_simulation.py is running → gestureCmd drives the drone
+  // When it is NOT running → keyboard works exactly as before (fallback)
+  const { gestureCmd, connected: gestureConnected, gestureLabel } = useGestureSocket();
   
   // Physical State (Refs for performance)
   const velocity = useRef(new THREE.Vector3(0, 0, 0));
@@ -49,8 +55,9 @@ export function useDronePhysics(isStabilized, isRtlActive, setIsRtlActive, build
     let targetYaw = controls.current.yaw; // default maintain current yaw
     let targetThrottle = 0;
 
-    // Manual Override Detection
-    const manualInputDetected = keys.w || keys.s || keys.ArrowUp || keys.ArrowDown || keys.a || keys.d || keys.q || keys.e;
+    // Manual Override Detection — keyboard OR active gesture counts as manual
+    const manualInputDetected = keys.w || keys.s || keys.ArrowUp || keys.ArrowDown || keys.a || keys.d || keys.q || keys.e
+      || (gestureConnected && gestureCmd?.trigger === 1);
     
     if (isRtlActive && manualInputDetected) {
       if (setIsRtlActive) setIsRtlActive(false);
@@ -132,17 +139,40 @@ export function useDronePhysics(isStabilized, isRtlActive, setIsRtlActive, build
       controls.current.throttle = THREE.MathUtils.lerp(controls.current.throttle, targetThrottle, delta * 2);
 
     } else {
-      // Standard Manual Control Throttle
-      if (keys.w) controls.current.throttle = THREE.MathUtils.lerp(controls.current.throttle, 1, delta * 2);
-      else if (keys.s) controls.current.throttle = THREE.MathUtils.lerp(controls.current.throttle, -0.2, delta * 2);
-      else controls.current.throttle = THREE.MathUtils.lerp(controls.current.throttle, 0, delta * 2);
-      
-      if (keys.ArrowUp) targetPitch += MAX_PITCH;
-      if (keys.ArrowDown) targetPitch -= MAX_PITCH;
-      if (keys.a) targetRoll += MAX_ROLL;
-      if (keys.d) targetRoll -= MAX_ROLL;
-      if (keys.q) targetYaw += delta * 2.0;    // Spin left
-      if (keys.e) targetYaw -= delta * 2.0;    // Spin right
+      // ── GESTURE MODE: gesture_simulation.py is connected ──────────────────
+      if (gestureConnected && gestureCmd) {
+        const armed = gestureCmd.trigger === 1;
+
+        // Fist (trigger=0) → cut throttle  |  Hand open (trigger=1) → hover
+        if (armed) {
+          controls.current.throttle = THREE.MathUtils.lerp(
+            controls.current.throttle,
+            0.5,        // hover throttle (matches send_hover_setpoint height=0.5)
+            delta * 2
+          );
+          // Map ESP32 vx/vy directly to pitch & roll (same scaling as Python)
+          targetPitch += (gestureCmd.pitch ?? 0) * MAX_PITCH;
+          targetRoll  += (gestureCmd.roll  ?? 0) * MAX_ROLL;
+        } else {
+          // Fist detected — drop throttle, level out
+          controls.current.throttle = THREE.MathUtils.lerp(
+            controls.current.throttle, 0, delta * 2
+          );
+        }
+
+      // ── KEYBOARD FALLBACK: gesture script not running ─────────────────────
+      } else {
+        if (keys.w) controls.current.throttle = THREE.MathUtils.lerp(controls.current.throttle, 1, delta * 2);
+        else if (keys.s) controls.current.throttle = THREE.MathUtils.lerp(controls.current.throttle, -0.2, delta * 2);
+        else controls.current.throttle = THREE.MathUtils.lerp(controls.current.throttle, 0, delta * 2);
+
+        if (keys.ArrowUp)   targetPitch += MAX_PITCH;
+        if (keys.ArrowDown) targetPitch -= MAX_PITCH;
+        if (keys.a)         targetRoll  += MAX_ROLL;
+        if (keys.d)         targetRoll  -= MAX_ROLL;
+        if (keys.q)         targetYaw   += delta * 2.0;  // Spin left
+        if (keys.e)         targetYaw   -= delta * 2.0;  // Spin right
+      }
     }
 
     // Duplicate manual override code removed to fix lint errors
@@ -259,5 +289,5 @@ export function useDronePhysics(isStabilized, isRtlActive, setIsRtlActive, build
 
   });
 
-  return { droneRef, velocity, controls, windVector, flightState, rtlPhase };
+  return { droneRef, velocity, controls, windVector, flightState, rtlPhase, gestureConnected, gestureLabel };
 }
